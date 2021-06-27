@@ -1,7 +1,7 @@
 const ethers = require('ethers')
 const { formatEther } = require( 'ethers/lib/utils')
 const { RelayProvider } = require( '@opengsn/provider')
-const paymasterArtifact = require('../build/contracts/WhitelistPaymaster.json')
+const paymasterArtifact = require('../build/contracts/TokenPaymaster.json')
 
 // In truffle console run:
 // const pm = await WhitelistPaymaster.deployed()
@@ -9,10 +9,12 @@ const paymasterArtifact = require('../build/contracts/WhitelistPaymaster.json')
 
 const paymasterAddress = require( '../build/gsn/Paymaster').address
 const contractArtifact = require('../build/contracts/CaptureTheFlag.json')
+const tokenArtifact    = require('../build/contracts/TestToken.json')
+const uniswapArtifact  = require('../build/contracts/TestUniswap.json')
 const contractAbi = contractArtifact.abi
 
 let theContract
-let provider
+let provider, networkId
 
 async function initContract() {
 
@@ -27,7 +29,7 @@ async function initContract() {
     console.log('chainChained');
     window.location.reload()
   })
-  const networkId = await window.ethereum.request({method: 'net_version'})
+  networkId = await window.ethereum.request({method: 'net_version'})
 
   const gsnProvider = await RelayProvider.newProvider( {
     provider: window.ethereum,
@@ -46,19 +48,29 @@ async function initContract() {
   const contractAddress = artifactNetwork.address
   theContract = new ethers.Contract(
     contractAddress, contractAbi, provider.getSigner())
+  uniswap = new ethers.Contract(
+    uniswapArtifact.networks[networkId].address,
+    uniswapArtifact.abi, provider.getSigner())
+  token = new ethers.Contract(
+    await uniswap.tokenAddress(),
+    tokenArtifact.abi, provider.getSigner())
 
   await listenToEvents()
   return {contractAddress, network}
 }
 
+async function userbalance() {
+    return await token.balanceOf(provider.getSigner())
+}
 async function contractCall() {
-  await window.ethereum.send('eth_requestAccounts')
-
+  let r = await window.ethereum.send('eth_requestAccounts')
+  console.log("user balance before: ", (await token.balanceOf(r.result[0])).toString())
   const transaction = await theContract.captureTheFlag()
   const hash = transaction.hash
   console.log(`Transaction ${hash} sent`)
   const receipt = await provider.waitForTransaction(hash)
   console.log(`Mined in block: ${receipt.blockNumber}`)
+  console.log("user balance after: ", (await token.balanceOf(r.result[0])).toString())
 }
 
 let logview

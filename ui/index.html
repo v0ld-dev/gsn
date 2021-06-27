@@ -11,13 +11,17 @@
     <h2>GSNv2 Test App</h2>
 
     <script>
+      /*window.app.userbalance().then(function (balance) {
+        console.log( 'userbalance: ', balance)
+        document.getElementById('balance').innerHTML = balance
+      })*/
       window.app.initContract().then(function ({contractAddress, network}) {
         console.log( 'CaptureTheFlag contract', contractAddress)
         console.log(`identified network: ${JSON.stringify(network)}`)
         document.getElementById('capture_button').disabled = false
       })
     </script>
-
+    <div id="balance"></div>
     <button id="capture_button" disabled onClick="window.app.contractCall()">
         Capture the flag
     </button>
