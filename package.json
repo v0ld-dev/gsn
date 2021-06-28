@@ -8,6 +8,8 @@
     "@opengsn/contracts": "^2.2.2",
     "@opengsn/paymasters": "^2.2.2-rc.1",
     "@opengsn/provider": "^2.2.2",
+    "@openzeppelin/contracts": "3.4.1",
+    "@openzeppelin/contracts-newone": "npm:@openzeppelin/contracts@4.1.0",
     "browserify": "^17.0.0",
     "ethers": "^5.3.0",
     "ganache-cli": "^6.12.2",
@@ -19,8 +21,8 @@
     "ganache": "yarn run ganache-cli -d --chainId 1337",
     "gsn-with-ganache": "run-with-testrpc -d --chainId 1337 'gsn start'",
     "test": "run-with-testrpc 'truffle test'",
-    "compile": "truffle compile",
-    "start": "truffle deploy && ./ui/compile.sh && yarn serve ./html"
+    "compile": "truffle compile --config=truffle.v08.js && truffle compile --config=truffle.js",
+    "start": "yarn run compile && truffle deploy && ./ui/compile.sh && yarn serve ./html"
   },
   "author": "",
   "license": "ISC"
