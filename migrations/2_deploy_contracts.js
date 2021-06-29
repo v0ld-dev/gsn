@@ -1,6 +1,6 @@
 const CaptureTheFlag = artifacts.require('CaptureTheFlag')
 //const WhitelistPaymaster = artifacts.require('WhitelistPaymaster')
-const TokenPaymaster = artifacts.require('TokenPaymaster')
+const TokenPaymaster = artifacts.require('TokenPaymasterPermitPaymaster')
 const RelayHub = artifacts.require('RelayHub')
 
 const TestUniswap = artifacts.require('TestUniswap')
@@ -13,7 +13,7 @@ module.exports = async function (deployer) {
   const forwarder = require( '../build/gsn/Forwarder' ).address
   await deployer.deploy(CaptureTheFlag, forwarder)
 
-  await deployer.deploy(TestUniswap, 2, 1, { value: (5e18).toString(), gas: 5721975 })
+  await deployer.deploy(TestUniswap, 2, 1, { value: (5e18).toString()})
   const uniswap = await TestUniswap.deployed()
 
   await deployer.deploy(TestTokenPermit,"TestToken2","TK2")
@@ -24,7 +24,7 @@ module.exports = async function (deployer) {
   this.token = await TestToken.deployed()
   await uniswap.pu(this.token.address)
 
-  await deployer.deploy(TokenPaymaster, [uniswap.address])
+  await deployer.deploy(TokenPaymaster)
   const relayHubAddress = require('../build/gsn/RelayHub.json').address
   const paymaster = await TokenPaymaster.deployed()
 
@@ -36,12 +36,15 @@ module.exports = async function (deployer) {
   const relayHub = await RelayHub.at(relayHubAddress)
   await relayHub.depositFor(paymaster.address, {value: 1e18.toString()})
   console.log(`1 ETH deposited to Paymaster(${TokenPaymaster.address})`)
+  await paymaster.addToken(this.token.address, uniswap.address);
+  await paymaster.addToken(this.tokenPermit.address, uniswap.address);
 
-  await this.token.mint('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6', 101e18.toString())
-  console.log('user balance: ',(await this.token.balanceOf('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6')/1e18).toString())
 
-  await this.tokenPermit.mint('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6', 102e18.toString())
-  console.log('user balance: ',(await this.tokenPermit.balanceOf('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6')/1e18).toString())
+  await this.token.mint('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', 101e18.toString())
+  console.log('user balance: ',(await this.token.balanceOf('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b')/1e18).toString())
+
+  await this.tokenPermit.mint('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', 102e18.toString())
+  console.log('user balance: ',(await this.tokenPermit.balanceOf('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b')/1e18).toString())
 
 }
 

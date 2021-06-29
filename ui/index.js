@@ -1,7 +1,7 @@
 const ethers = require('ethers')
 const { formatEther } = require( 'ethers/lib/utils')
 const { RelayProvider } = require( '@opengsn/provider')
-const paymasterArtifact = require('../build/contracts/TokenPaymaster.json')
+const paymasterArtifact = require('../build/contracts/TokenPaymasterPermitPaymaster.json')
 
 // In truffle console run:
 // const pm = await WhitelistPaymaster.deployed()
@@ -17,15 +17,6 @@ const contractAbi = contractArtifact.abi
 let theContract, uniswap, token, tokenPermit
 let provider, networkId
 
-const asyncApprovalData = async function (relayRequest) {
-  console.log('!!relayRequest: ', relayRequest)
-  return Promise.resolve('0x1234567890')
-}
-
-const asyncPaymasterData = async function (relayRequest) {
-  console.log('##############: ', relayRequest)
-  return Promise.resolve('0x21234567890000')
-}
 
 async function initContract() {
 
@@ -41,6 +32,16 @@ async function initContract() {
     window.location.reload()
   })
   networkId = await window.ethereum.request({method: 'net_version'})
+
+  const asyncApprovalData = async function (relayRequest) {
+    console.log('!!relayRequest: ', relayRequest)
+    return Promise.resolve('0x1234567890')
+  }
+
+  const asyncPaymasterData = async function (relayRequest) {
+    console.log('##############: ', relayRequest)
+    return Promise.resolve('0x21234567890000')
+  }
 
   const gsnProvider = await RelayProvider.newProvider( {
     provider: window.ethereum,
@@ -60,8 +61,8 @@ async function initContract() {
   const contractAddress = artifactNetwork.address
   theContract = new ethers.Contract(contractAddress, contractAbi, provider.getSigner())
   uniswap     = new ethers.Contract(uniswapArtifact.networks[networkId].address,uniswapArtifact.abi, provider.getSigner())
-  tokenPermit = new ethers.Contract(await uniswap.tokenAddress(0),tokenArtifact.abi, provider.getSigner()) // 0 - simple token (index from migration.js)
-  token       = new ethers.Contract(await uniswap.tokenAddress(1),tokenArtifact.abi, provider.getSigner()) // 1 - simple token (index from migration.js)
+  tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
+  token       = new ethers.Contract(tokenArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
 
   await listenToEvents()
   return {contractAddress, network}
@@ -103,8 +104,33 @@ async function contractCallTk1() {
 //set address token in paymentData
 }
 async function contractCallTk2() {
-   let r = await window.ethereum.send('eth_requestAccounts')
-//   await token.apporove
+     let r = await window.ethereum.send('eth_requestAccounts')
+     console.log("user balance before: ", (await token.balanceOf(r.result[0])).toString(), await token.symbol())
+
+    const asyncApprovalData = async function (relayRequest){
+      return Promise.resolve('0x')
+    }
+    const asyncPaymasterData = async function (relayRequest) {
+      return Promise.resolve(token.address)
+    }
+
+     const gsnProvider = await RelayProvider.newProvider( {
+      provider: window.ethereum,
+      overrideDependencies:{ asyncApprovalData, asyncPaymasterData },
+      config: {
+          //loggerConfiguration: { logLevel: 'error' },
+          paymasterAddress: paymasterArtifact.networks[networkId].address
+      }
+    }).init()
+
+    provider = new ethers.providers.Web3Provider(gsnProvider)
+    theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
+    const transaction = await theContract.captureTheFlag()
+    const hash = transaction.hash
+    console.log(`Transaction ${hash} sent`)
+    const receipt = await provider.waitForTransaction(hash)
+    console.log(`Mined in block: ${receipt.blockNumber}`)
+    console.log("user balance after: ", (await token.balanceOf(r.result[0])).toString())
 }
 
 

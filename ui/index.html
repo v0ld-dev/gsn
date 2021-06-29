@@ -27,7 +27,7 @@
     <p><button id="through_tk1" disabled onClick="window.app.contractCallTk1()">
         pay for TX through erc20permit token
     </button></p>
-    <p><button id="through_tk2" disabled onClick="window.app.contractCallTk2()">
+    <p><button id="through_tk2" disabled onClick="(async()=>{await window.app.contractCallTk2();})();">
         pay for TX through erc20 token
     </button></p>
     <p><button id="capture_button" disabled onClick="window.app.contractCall()">
