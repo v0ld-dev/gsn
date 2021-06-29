@@ -19,12 +19,20 @@
         console.log( 'CaptureTheFlag contract', contractAddress)
         console.log(`identified network: ${JSON.stringify(network)}`)
         document.getElementById('capture_button').disabled = false
+        document.getElementById('through_tk1').disabled = false
+        document.getElementById('through_tk2').disabled = false
+        
       })
     </script>
-    <div id="balance"></div>
-    <button id="capture_button" disabled onClick="window.app.contractCall()">
+    <p><button id="through_tk1" disabled onClick="window.app.contractCallTk1()">
+        pay for TX through erc20permit token
+    </button></p>
+    <p><button id="through_tk2" disabled onClick="window.app.contractCallTk2()">
+        pay for TX through erc20 token
+    </button></p>
+    <p><button id="capture_button" disabled onClick="window.app.contractCall()">
         Capture the flag
-    </button>
+    </button></p>
 
 <hr>
 <div id="logview"> </div>

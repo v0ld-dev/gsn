@@ -9,31 +9,34 @@ import "./TestToken.sol";
 //- the exchange rate is fixed at construction
 //- mints new tokens at will...
 contract TestUniswap is IUniswap {
-    IERC20 public token;
+    address[] public token;
     uint public rateMult;
     uint public rateDiv;
 
     constructor(uint _rateMult, uint _rateDiv) public payable {
-        token = new TestToken();
         rateMult = _rateMult;
         rateDiv = _rateDiv;
         require(msg.value > 0, "must specify liquidity");
         require(rateMult != 0 && rateDiv != 0, "bad mult,div");
     }
 
+    function pu(address _erc20) external {
+        token.push(_erc20);
+    }
+
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    function tokenAddress() external override view returns (address out) {
-        return address(token);
+    function tokenAddress(uint i) external override view returns (address out) {
+        return  address(token[i]);
     }
 
-    function tokenToEthSwapOutput(uint256 ethBought, uint256 maxTokens, uint256 deadline) public override returns (uint256 out) {
+    function tokenToEthSwapOutput(IERC20 _token, uint256 ethBought, uint256 maxTokens, uint256 deadline) public override returns (uint256 out) {
         (maxTokens, deadline);
         uint tokensToSell = getTokenToEthOutputPrice(ethBought);
         require(address(this).balance > ethBought, "not enough liquidity");
 
-        token.transferFrom(msg.sender, address(this), tokensToSell);
+        _token.transferFrom(msg.sender, address(this), tokensToSell);
         msg.sender.transfer(ethBought);
         return tokensToSell;
     }
@@ -42,13 +45,13 @@ contract TestUniswap is IUniswap {
         return tokensSold * rateDiv / rateMult;
     }
 
-    function tokenToEthTransferOutput(uint256 ethBought, uint256 maxTokens, uint256 deadline, address payable recipient) external override returns (uint256 out) {
+    function tokenToEthTransferOutput(IERC20 _token, uint256 ethBought, uint256 maxTokens, uint256 deadline, address payable recipient) external override returns (uint256 out) {
         (maxTokens, deadline, recipient);
         require(address(this).balance > ethBought, "not enough liquidity");
 
         uint tokensToSell = getTokenToEthOutputPrice(ethBought);
 
-        token.transferFrom(msg.sender, address(this), tokensToSell);
+        _token.transferFrom(msg.sender, address(this), tokensToSell);
         recipient.transfer(ethBought);
         return tokensToSell;
     }

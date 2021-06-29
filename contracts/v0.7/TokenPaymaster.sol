@@ -38,8 +38,11 @@ contract TokenPaymaster is BasePaymaster {
 
         for (uint256 i = 0; i < _uniswaps.length; i++){
             supportedUniswaps[_uniswaps[i]] = true;
-            tokens.push(IERC20(_uniswaps[i].tokenAddress()));
-            tokens[i].approve(address(_uniswaps[i]), uint(-1));
+            tokens.push(IERC20(_uniswaps[i].tokenAddress(0)));
+            tokens[0].approve(address(_uniswaps[i]), uint(-1));
+
+            tokens.push(IERC20(_uniswaps[i].tokenAddress(1)));
+            tokens[1].approve(address(_uniswaps[i]), uint(-1));
         }
     }
 
@@ -73,7 +76,7 @@ contract TokenPaymaster is BasePaymaster {
         require(paymasterData.length==32, "invalid uniswap address in paymasterData");
         uniswap = abi.decode(paymasterData, (IUniswap));
         require(supportedUniswaps[uniswap], "unsupported token uniswap");
-        token = IERC20(uniswap.tokenAddress());
+        token = IERC20(uniswap.tokenAddress(0));
     }
 
     function _calculatePreCharge(
@@ -136,7 +139,7 @@ contract TokenPaymaster is BasePaymaster {
         uint256 tokenActualCharge = uniswap.getTokenToEthOutputPrice(valueRequested.add(ethActualCharge));
         uint256 tokenRefund = tokenPrecharge.sub(tokenActualCharge);
         _refundPayer(payer, token, tokenRefund);
-        _depositProceedsToHub(ethActualCharge, uniswap);
+        _depositProceedsToHub(token, ethActualCharge, uniswap);
         emit TokensCharged(gasUseWithoutPost, gasUsedByPost, ethActualCharge, tokenActualCharge);
     }
 
@@ -148,9 +151,9 @@ contract TokenPaymaster is BasePaymaster {
         require(token.transfer(payer, tokenRefund), "failed refund");
     }
 
-    function _depositProceedsToHub(uint256 ethActualCharge, IUniswap uniswap) private {
+    function _depositProceedsToHub(IERC20 token, uint256 ethActualCharge, IUniswap uniswap) private {
         //solhint-disable-next-line
-        uniswap.tokenToEthSwapOutput(ethActualCharge, uint(-1), block.timestamp+60*15);
+        uniswap.tokenToEthSwapOutput(token, ethActualCharge, uint(-1), block.timestamp+60*15);
         relayHub.depositFor{value:ethActualCharge}(address(this));
     }
 
