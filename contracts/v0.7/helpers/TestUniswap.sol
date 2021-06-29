@@ -9,11 +9,14 @@ import "./TestToken.sol";
 //- the exchange rate is fixed at construction
 //- mints new tokens at will...
 contract TestUniswap is IUniswap {
+
+    address public immutable override WETH;
     address[] public token;
     uint public rateMult;
     uint public rateDiv;
 
     constructor(uint _rateMult, uint _rateDiv) public payable {
+        WETH = address(0);
         rateMult = _rateMult;
         rateDiv = _rateDiv;
         require(msg.value > 0, "must specify liquidity");
@@ -56,7 +59,26 @@ contract TestUniswap is IUniswap {
         return tokensToSell;
     }
 
+
     function getTokenToEthOutputPrice(uint256 ethBought) public override view returns (uint256 out) {
         return ethBought * rateMult / rateDiv;
     }
+
+    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external override {
+
+        uint tokensToSell = getTokenToEthOutputPrice(amountOutMin);
+        require(address(this).balance > amountOutMin, "not enough liquidity");
+
+        IERC20(path[0]).transferFrom(msg.sender, address(this), tokensToSell);
+        msg.sender.transfer(amountOutMin);
+    
+    }
+    /** Useful for calculating optimal token amounts before calling swap. */
+    function getAmountsIn(uint amountOut, address[] memory path) external override view returns (uint[] memory amounts){
+        uint[] memory amount = new uint[](2);
+        amount[0] = amountOut * rateMult / rateDiv;   
+        amount[1] = 0;
+        return amount;
+    }
+    
 }

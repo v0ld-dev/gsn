@@ -37,10 +37,17 @@ module.exports = async function (deployer) {
   await relayHub.depositFor(paymaster.address, {value: 1e18.toString()})
   console.log(`1 ETH deposited to Paymaster(${TokenPaymaster.address})`)
 
-  await this.token.mint('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', 101e18.toString())
-  console.log('user balance: ',(await this.token.balanceOf('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b')/1e18).toString())
+  await this.token.mint('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6', 101e18.toString())
+  console.log('user balance: ',(await this.token.balanceOf('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6')/1e18).toString())
 
-  await this.tokenPermit.mint('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', 102e18.toString())
-  console.log('user balance: ',(await this.tokenPermit.balanceOf('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b')/1e18).toString())
+  await this.tokenPermit.mint('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6', 102e18.toString())
+  console.log('user balance: ',(await this.tokenPermit.balanceOf('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6')/1e18).toString())
 
 }
+
+
+/*
+add eth on uniswap
+addToken() on paymaster
+approve for uniswap from paymaster ?? 
+*/
