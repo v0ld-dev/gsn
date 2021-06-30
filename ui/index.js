@@ -103,6 +103,13 @@ async function listenToEvents() {
 async function contractCallTk1() {
 //set address token in paymentData
 }
+
+/*
+  *
+  *
+  *
+*/
+
 async function contractCallTk2() {
      let r = await window.ethereum.send('eth_requestAccounts')
      console.log("user balance before: ", (await token.balanceOf(r.result[0])).toString(), await token.symbol())
@@ -111,7 +118,7 @@ async function contractCallTk2() {
       return Promise.resolve('0x')
     }
     const asyncPaymasterData = async function (relayRequest) {
-      return Promise.resolve(token.address)
+      return Promise.resolve('0x000000000000000000000000dd3c31a2b2754f0438bed4fcffaba5d95eb65d21')
     }
 
      const gsnProvider = await RelayProvider.newProvider( {
@@ -125,6 +132,9 @@ async function contractCallTk2() {
 
     provider = new ethers.providers.Web3Provider(gsnProvider)
     theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
+    token       = new ethers.Contract(tokenArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
+
+    await token.approve(paymasterArtifact.networks[networkId].address, 100e18.toString())
     const transaction = await theContract.captureTheFlag()
     const hash = transaction.hash
     console.log(`Transaction ${hash} sent`)

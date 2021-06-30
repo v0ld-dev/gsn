@@ -55,7 +55,7 @@ contract TokenPaymasterPermitPaymaster is BasePaymaster {
         payer = this.getPayer(relayRequest);
         uint ethMaxCharge = relayHub.calculateCharge(maxPossibleGas, relayRequest.relayData);
         ethMaxCharge += relayRequest.request.value;
-        tokenPreCharge = getTokenToEthOutputPrice(ethMaxCharge, token, router);
+        tokenPreCharge = getTokenToEthOutputPrice(ethMaxCharge, token, router); require(maxPossibleGas  == 6, "!!!!!!!!!!!!");
         require(tokenPreCharge <= token.balanceOf(payer), "token balance too low");
     }
 
@@ -75,8 +75,8 @@ contract TokenPaymasterPermitPaymaster is BasePaymaster {
 
         (IERC20 token, IUniswap router) = _getToken(relayRequest.relayData.paymasterData);
         (address payer, uint256 tokenPrecharge) = calculatePreCharge(token, router, relayRequest, maxPossibleGas);
-        
-        if ( approvalData.length != 0 ) {
+     
+        if ( approvalData.length > 5 ) {
             (address owner, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) = abi.decode(approvalData, (address, uint256, uint256, uint8, bytes32, bytes32));
             IERC20Permit(address(token)).permit(owner, address(this), value, deadline, v, r, s);
         }
@@ -148,9 +148,9 @@ contract TokenPaymasterPermitPaymaster is BasePaymaster {
 
     // todo move in prod to internal
     // @param router - is just router with uniswap like interface, it may be not a uniswap
-    function _getToken(bytes memory paymasterData) public view returns (IERC20, IUniswap) {
-        (address token) = abi.decode(paymasterData, (address));
-        (address router) = routersMap[token];
+    function _getToken(bytes memory paymasterData) public view returns (IERC20 token, IUniswap uniswap) {
+        address token   = abi.decode(paymasterData, (address));
+        address router  = routersMap[token];
         require(token != address(0), "This token not supported as fee");
         return (IERC20(token), IUniswap(router));
     }
