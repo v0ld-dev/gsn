@@ -15,12 +15,12 @@ contract TestUniswap is IUniswap {
     uint public rateMult;
     uint public rateDiv;
 
-    constructor(uint _rateMult, uint _rateDiv) public payable {
-        WETH = address(0);
+    constructor(uint _rateMult, uint _rateDiv, address _WETH) public payable {
         rateMult = _rateMult;
         rateDiv = _rateDiv;
         require(msg.value > 0, "must specify liquidity");
         require(rateMult != 0 && rateDiv != 0, "bad mult,div");
+        WETH = _WETH;
     }
 
     function pu(address _erc20) external {

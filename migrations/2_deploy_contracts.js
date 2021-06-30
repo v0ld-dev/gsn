@@ -9,11 +9,11 @@ const TestTokenPermit   = artifacts.require('TestTokenPermit')
 
 
 
-module.exports = async function (deployer) {
+module.exports = async function (deployer, networks, accounts) {
   const forwarder = require( '../build/gsn/Forwarder' ).address
   await deployer.deploy(CaptureTheFlag, forwarder)
 
-  await deployer.deploy(TestUniswap, 2, 1, { value: (5e18).toString()})
+  await deployer.deploy(TestUniswap, 2, 1, '0x0000000000000000000000000000000000000000', { value: (5e18).toString()})
   const uniswap = await TestUniswap.deployed()
 
   await deployer.deploy(TestTokenPermit,"TestToken2","TK2")
@@ -40,11 +40,13 @@ module.exports = async function (deployer) {
   await paymaster.addToken(this.tokenPermit.address, uniswap.address);
 
 
-  await this.token.mint('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', 101e18.toString())
-  console.log('user balance: ',(await this.token.balanceOf('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b')/1e18).toString())
+  await this.token.mint('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6', web3.utils.toWei('1000000', 'ether'))
+  console.log('user balance: ',(await this.token.balanceOf('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6')/1e18).toString())
 
-  await this.tokenPermit.mint('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', 102e18.toString())
-  console.log('user balance: ',(await this.tokenPermit.balanceOf('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b')/1e18).toString())
+  await this.tokenPermit.mint('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6', web3.utils.toWei('1000000', 'ether'))
+  console.log('user balance: ',(await this.tokenPermit.balanceOf('0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6')/1e18).toString())
+
+  await web3.eth.sendTransaction({from: accounts[0], to: '0xf2EF73BAAaf9CAcde06dE3E270C31BE59e66eDF6', value: web3.utils.toWei('0.5', 'ether')})
 
 }
 

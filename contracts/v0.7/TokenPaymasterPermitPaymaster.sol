@@ -55,7 +55,7 @@ contract TokenPaymasterPermitPaymaster is BasePaymaster {
         payer = this.getPayer(relayRequest);
         uint ethMaxCharge = relayHub.calculateCharge(maxPossibleGas, relayRequest.relayData);
         ethMaxCharge += relayRequest.request.value;
-        tokenPreCharge = getTokenToEthOutputPrice(ethMaxCharge, token, router); require(maxPossibleGas  == 6, "!!!!!!!!!!!!");
+        tokenPreCharge = getTokenToEthOutputPrice(ethMaxCharge, token, router);
         require(tokenPreCharge <= token.balanceOf(payer), "token balance too low");
     }
 
@@ -80,7 +80,7 @@ contract TokenPaymasterPermitPaymaster is BasePaymaster {
             (address owner, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) = abi.decode(approvalData, (address, uint256, uint256, uint8, bytes32, bytes32));
             IERC20Permit(address(token)).permit(owner, address(this), value, deadline, v, r, s);
         }
-        
+
         token.transferFrom(payer, address(this), tokenPrecharge);
         emit TokensPrecharged(address(token), address(router), tokenPrecharge);
         return (abi.encode(payer, tokenPrecharge, token, router), false);
@@ -152,6 +152,7 @@ contract TokenPaymasterPermitPaymaster is BasePaymaster {
         address token   = abi.decode(paymasterData, (address));
         address router  = routersMap[token];
         require(token != address(0), "This token not supported as fee");
+        require(router != address(0), "Does't supported pool");
         return (IERC20(token), IUniswap(router));
     }
 
@@ -188,7 +189,7 @@ contract TokenPaymasterPermitPaymaster is BasePaymaster {
     // token must have pool with wrapped native currency
     function getTokenToEthOutputPrice(uint ethValue, IERC20 token, IUniswap router) internal view returns (uint256) {
         address[] memory path = new address[](2);
-        path[0] = address(token);
+        path[0] = address(token); 
         path[1] = router.WETH();
         uint[] memory amountOuts = router.getAmountsIn(ethValue, path);
         return amountOuts[0];

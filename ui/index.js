@@ -118,7 +118,7 @@ async function contractCallTk2() {
       return Promise.resolve('0x')
     }
     const asyncPaymasterData = async function (relayRequest) {
-      return Promise.resolve('0x000000000000000000000000dd3c31a2b2754f0438bed4fcffaba5d95eb65d21')
+      return Promise.resolve(ethers.utils.defaultAbiCoder.encode(['address'],[token.address]))
     }
 
      const gsnProvider = await RelayProvider.newProvider( {
@@ -134,13 +134,42 @@ async function contractCallTk2() {
     theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
     token       = new ethers.Contract(tokenArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
 
-    await token.approve(paymasterArtifact.networks[networkId].address, 100e18.toString())
+    
     const transaction = await theContract.captureTheFlag()
     const hash = transaction.hash
     console.log(`Transaction ${hash} sent`)
     const receipt = await provider.waitForTransaction(hash)
     console.log(`Mined in block: ${receipt.blockNumber}`)
     console.log("user balance after: ", (await token.balanceOf(r.result[0])).toString())
+}
+
+async function approveTk2() {
+
+    const asyncApprovalData = async function (relayRequest){
+      relayRequest.request.useGSN = false
+      console.log('########## ', relayRequest)
+      return Promise.resolve('0x')
+    }
+
+    const asyncPaymasterData = async function (relayRequest) {
+      relayRequest.request.useGSN = false
+      console.log('#### ', relayRequest)
+      return Promise.resolve('0x')
+    }
+
+     const gsnProvider = await RelayProvider.newProvider( {
+        provider: window.ethereum,
+        overrideDependencies:{ asyncApprovalData, asyncPaymasterData },
+        config: {
+            //loggerConfiguration: { logLevel: 'error' },
+            paymasterAddress: paymasterArtifact.networks[networkId].address
+        }
+    }).init()
+
+    provider = new ethers.providers.Web3Provider(gsnProvider)
+
+          token       = new ethers.Contract(tokenArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
+    await token.approve(paymasterArtifact.networks[networkId].address, ethers.utils.parseEther('10000'))
 }
 
 
@@ -150,6 +179,7 @@ window.app = {
   contractCall,
   contractCallTk1,
   contractCallTk2,
+  approveTk2,
   log
 }
 
