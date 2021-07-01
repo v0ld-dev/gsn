@@ -13,6 +13,7 @@ module.exports = async function (deployer, networks, accounts) {
   const forwarder = require( '../build/gsn/Forwarder' ).address
   await deployer.deploy(CaptureTheFlag, forwarder)
 
+  // for mock uniswap it is permission to has '0x0000000000000000000000000000000000000000' 
   await deployer.deploy(TestUniswap, 2, 1, '0x0000000000000000000000000000000000000000', { value: (5e18).toString()})
   const uniswap = await TestUniswap.deployed()
 
@@ -40,19 +41,12 @@ module.exports = async function (deployer, networks, accounts) {
   await paymaster.addToken(this.tokenPermit.address, uniswap.address);
 
 
-  await this.token.mint('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', web3.utils.toWei('1000000', 'ether'))
-  console.log('user balance: ',(await this.token.balanceOf('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b')/1e18).toString())
+  await this.token.mint(process.env.FRONTEND_USER, web3.utils.toWei('1000000', 'ether'))
+  console.log('user balance: ',(await this.token.balanceOf(process.env.FRONTEND_USER)/1e18).toString())
 
-  await this.tokenPermit.mint('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', web3.utils.toWei('1000000', 'ether'))
-  console.log('user balance: ',(await this.tokenPermit.balanceOf('0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b')/1e18).toString())
+  await this.tokenPermit.mint(process.env.FRONTEND_USER, web3.utils.toWei('1000000', 'ether'))
+  console.log('user balance: ',(await this.tokenPermit.balanceOf(process.env.FRONTEND_USER)/1e18).toString())
 
-  await web3.eth.sendTransaction({from: accounts[0], to: '0x39FEA483ce65F36394e07a97fF49aE1AA653ee0b', value: web3.utils.toWei('0.5', 'ether')})
+  await web3.eth.sendTransaction({from: accounts[0], to: process.env.FRONTEND_USER, value: web3.utils.toWei('0.5', 'ether')})
 
 }
-
-
-/*
-add eth on uniswap
-addToken() on paymaster
-approve for uniswap from paymaster ?? 
-*/

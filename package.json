@@ -11,6 +11,7 @@
     "@openzeppelin/contracts": "3.4.1",
     "@openzeppelin/contracts-newone": "npm:@openzeppelin/contracts@4.1.0",
     "browserify": "^17.0.0",
+    "dotenv": "^10.0.0",
     "ethers": "^5.3.0",
     "ganache-cli": "^6.12.2",
     "run-with-testrpc": "^0.3.1",
