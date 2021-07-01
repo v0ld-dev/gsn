@@ -14,6 +14,8 @@ const tokenPermitArtifact    = require('../build/contracts/TestTokenPermit.json'
 const uniswapArtifact  = require('../build/contracts/TestUniswap.json')
 const contractAbi = contractArtifact.abi
 
+const PERMIT_TYPEHASH = ethers.lib.utils.keccak256(ethers.lib.utils.toUtf8Bytes('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'))
+
 let theContract, uniswap, token, tokenPermit
 let provider, networkId
 
@@ -61,7 +63,7 @@ async function initContract() {
   const contractAddress = artifactNetwork.address
   theContract = new ethers.Contract(contractAddress, contractAbi, provider.getSigner())
   uniswap     = new ethers.Contract(uniswapArtifact.networks[networkId].address,uniswapArtifact.abi, provider.getSigner())
-  tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
+  tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address,tokenPermitArtifact.abi, provider.getSigner())
   token       = new ethers.Contract(tokenArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
 
   await listenToEvents()
@@ -102,28 +104,40 @@ async function listenToEvents() {
 
 async function contractCallTk1() {
 
+        const asyncApprovalData = async function (relayRequest){
+          return Promise.resolve('0x')
+        }
+        const asyncPaymasterData = async function (relayRequest) {
+          return Promise.resolve(ethers.utils.defaultAbiCoder.encode(['address'],[tokenPermit.address]))
+        }
+
+         const gsnProvider = await RelayProvider.newProvider( {
+          provider: window.ethereum,
+          overrideDependencies:{ asyncApprovalData, asyncPaymasterData },
+          config: {
+              //loggerConfiguration: { logLevel: 'error' },
+              paymasterAddress: paymasterArtifact.networks[networkId].address
+          }
+        }).init()
+
+        provider = new ethers.providers.Web3Provider(gsnProvider)
+
+
+    let month = 60 * 60 * 24 * 30
+    let deadlineForSignature = Math.ceil(Date.now() / 1000) + month
+      tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address, tokenPermitArtifact.abi, provider.getSigner())
+      theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
+
     let r = await window.ethereum.send('eth_requestAccounts')
-     console.log("user balance before: ", (await tokenPermit.balanceOf(r.result[0])).toString(), await token.symbol())
+    console.log("user balance before: ", (await tokenPermit.balanceOf(r.result[0])).toString(), await tokenPermit.symbol())
 
-    const asyncApprovalData = async function (relayRequest){
-      return Promise.resolve('0x')
-    }
-    const asyncPaymasterData = async function (relayRequest) {
-      return Promise.resolve(ethers.utils.defaultAbiCoder.encode(['address'],[token.address]))
-    }
+    let nonce = (await tokenPermit.nonces(provider.getSigner())).toNumber()
+    // (alpaca888Address, PORTAL_ADDRESS[chainId1], value.toString(),
+    let DOMAIN_SEPARATOR = getDomainSeparator("SEPARATOR", tokenPermit.address, provider.getNetwork().chainId)
 
-     const gsnProvider = await RelayProvider.newProvider( {
-      provider: window.ethereum,
-      overrideDependencies:{ asyncApprovalData, asyncPaymasterData },
-      config: {
-          //loggerConfiguration: { logLevel: 'error' },
-          paymasterAddress: paymasterArtifact.networks[networkId].address
-      }
-    }).init()
-
-    provider = new ethers.providers.Web3Provider(gsnProvider)
-    theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
-    token       = new ethers.Contract(tokenPermitArtifact.networks[networkId].address,tokenPermitArtifact.abi, provider.getSigner())
+    // Get the EIP712 digest
+    const digest = getPermitDigest(name, token.address, provider.getNetwork().chainId, approve, nonce, deadlineForSignature)
+    
 
     
     const transaction = await theContract.captureTheFlag()
@@ -131,7 +145,7 @@ async function contractCallTk1() {
     console.log(`Transaction ${hash} sent`)
     const receipt = await provider.waitForTransaction(hash)
     console.log(`Mined in block: ${receipt.blockNumber}`)
-    console.log("user balance after: ", (await token.balanceOf(r.result[0])).toString())
+    console.log("user balance after: ", (await tokenPermit.balanceOf(r.result[0])).toString())
 }
 
 /*
@@ -178,6 +192,22 @@ async function approveTk2() {
 
           token       = new ethers.Contract(tokenArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
           await token.functions.approve(paymasterArtifact.networks[networkId].address, ethers.utils.parseEther('10000'))
+}
+
+
+async function getDomainSeparator(name, contractAddress, chainId) {
+  return ethers.lib.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
+      [
+        ethers.lib.utils.keccak256(toUtf8Bytes('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')),
+        ethers.lib.utils.keccak256(toUtf8Bytes(name)),
+        ethers.lib.utils.keccak256(toUtf8Bytes('1')),
+        chainId,
+        contractAddress,
+      ]
+    )
+  )
 }
 
 
