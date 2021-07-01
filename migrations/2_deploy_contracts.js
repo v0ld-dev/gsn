@@ -1,3 +1,5 @@
+const result = require('dotenv').config({ path: `../.env` });
+
 const CaptureTheFlag = artifacts.require('CaptureTheFlag')
 //const WhitelistPaymaster = artifacts.require('WhitelistPaymaster')
 const TokenPaymaster = artifacts.require('TokenPaymasterPermitPaymaster')
@@ -41,12 +43,12 @@ module.exports = async function (deployer, networks, accounts) {
   await paymaster.addToken(this.tokenPermit.address, uniswap.address);
 
 
-  await this.token.mint(process.env.FRONTEND_USER, web3.utils.toWei('1000000', 'ether'))
-  console.log('user balance: ',(await this.token.balanceOf(process.env.FRONTEND_USER)/1e18).toString())
+  await this.token.mint(result.parsed.FRONTEND_USER, web3.utils.toWei('1000000', 'ether'))
+  console.log('user balance: ',(await this.token.balanceOf(result.parsed.FRONTEND_USER)/1e18).toString())
 
-  await this.tokenPermit.mint(process.env.FRONTEND_USER, web3.utils.toWei('1000000', 'ether'))
-  console.log('user balance: ',(await this.tokenPermit.balanceOf(process.env.FRONTEND_USER)/1e18).toString())
+  await this.tokenPermit.mint(result.parsed.FRONTEND_USER, web3.utils.toWei('1000000', 'ether'))
+  console.log('user balance: ',(await this.tokenPermit.balanceOf(result.parsed.FRONTEND_USER)/1e18).toString())
 
-  await web3.eth.sendTransaction({from: accounts[0], to: process.env.FRONTEND_USER, value: web3.utils.toWei('0.5', 'ether')})
+  await web3.eth.sendTransaction({from: accounts[0], to: result.parsed.FRONTEND_USER, value: web3.utils.toWei('0.5', 'ether')})
 
 }
