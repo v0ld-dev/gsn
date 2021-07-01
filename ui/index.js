@@ -101,7 +101,37 @@ async function listenToEvents() {
 }
 
 async function contractCallTk1() {
-//set address token in paymentData
+
+    let r = await window.ethereum.send('eth_requestAccounts')
+     console.log("user balance before: ", (await tokenPermit.balanceOf(r.result[0])).toString(), await token.symbol())
+
+    const asyncApprovalData = async function (relayRequest){
+      return Promise.resolve('0x')
+    }
+    const asyncPaymasterData = async function (relayRequest) {
+      return Promise.resolve(ethers.utils.defaultAbiCoder.encode(['address'],[token.address]))
+    }
+
+     const gsnProvider = await RelayProvider.newProvider( {
+      provider: window.ethereum,
+      overrideDependencies:{ asyncApprovalData, asyncPaymasterData },
+      config: {
+          //loggerConfiguration: { logLevel: 'error' },
+          paymasterAddress: paymasterArtifact.networks[networkId].address
+      }
+    }).init()
+
+    provider = new ethers.providers.Web3Provider(gsnProvider)
+    theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
+    token       = new ethers.Contract(tokenPermitArtifact.networks[networkId].address,tokenPermitArtifact.abi, provider.getSigner())
+
+    
+    const transaction = await theContract.captureTheFlag()
+    const hash = transaction.hash
+    console.log(`Transaction ${hash} sent`)
+    const receipt = await provider.waitForTransaction(hash)
+    console.log(`Mined in block: ${receipt.blockNumber}`)
+    console.log("user balance after: ", (await token.balanceOf(r.result[0])).toString())
 }
 
 /*
@@ -144,32 +174,10 @@ async function contractCallTk2() {
 }
 
 async function approveTk2() {
-
-    const asyncApprovalData = async function (relayRequest){
-      relayRequest.request.useGSN = false
-      console.log('########## ', relayRequest)
-      return Promise.resolve('0x')
-    }
-
-    const asyncPaymasterData = async function (relayRequest) {
-      relayRequest.request.useGSN = false
-      console.log('#### ', relayRequest)
-      return Promise.resolve('0x')
-    }
-
-     const gsnProvider = await RelayProvider.newProvider( {
-        provider: window.ethereum,
-        overrideDependencies:{ asyncApprovalData, asyncPaymasterData },
-        config: {
-            //loggerConfiguration: { logLevel: 'error' },
-            paymasterAddress: paymasterArtifact.networks[networkId].address
-        }
-    }).init()
-
-    provider = new ethers.providers.Web3Provider(gsnProvider)
+    provider = new ethers.providers.Web3Provider(window.ethereum)
 
           token       = new ethers.Contract(tokenArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
-    await token.approve(paymasterArtifact.networks[networkId].address, ethers.utils.parseEther('10000'))
+          await token.functions.approve(paymasterArtifact.networks[networkId].address, ethers.utils.parseEther('10000'))
 }
 
 
