@@ -4,6 +4,8 @@
   "description": "Simple example of how to use GSNv2",
   "private": true,
   "dependencies": {
+    "@ethersproject/bytes": "^5.4.0",
+    "@ethersproject/contracts": "^5.4.0",
     "@opengsn/cli": "^2.2.2",
     "@opengsn/contracts": "^2.2.2",
     "@opengsn/paymasters": "^2.2.2-rc.1",

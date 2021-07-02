@@ -1,6 +1,8 @@
 const ethers = require('ethers')
 const { formatEther } = require( 'ethers/lib/utils')
-const { RelayProvider } = require( '@opengsn/provider')
+const { RelayProvider }  = require( '@opengsn/provider')
+const { splitSignature } = require( '@ethersproject/bytes')
+const { Contract }       = require( '@ethersproject/contracts')
 const paymasterArtifact = require('../build/contracts/TokenPaymasterPermitPaymaster.json')
 
 // In truffle console run:
@@ -22,7 +24,8 @@ let theContract,
     tokenPermit,
     provider,
     networkId,
-    userAccount
+    userAccount,
+    chainId
 
 
 async function initContract() {
@@ -52,7 +55,11 @@ async function initContract() {
     }
   }).init()
 
-  provider = new ethers.providers.Web3Provider(gsnProvider)
+
+  provider    = new ethers.providers.Web3Provider(gsnProvider)
+  tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address, tokenPermitArtifact.abi, provider.getSigner())
+  theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
+  chainId     = (await provider.getNetwork()).chainId
   const network = await provider.getNetwork()
   const acc = provider.getSigner() 
   return {acc, network}
@@ -92,39 +99,54 @@ async function listenToEvents() {
 
 async function contractCallTk1() {
 
-        const asyncApprovalData = async function (relayRequest){
-          return Promise.resolve('0x')
-        }
-        const asyncPaymasterData = async function (relayRequest) {
-          return Promise.resolve(ethers.utils.defaultAbiCoder.encode(['address'],[tokenPermitArtifact.networks[networkId].address]))
-        }
+      let month = 60 * 60 * 24 * 30
+      let deadlineForSignature = Math.ceil(Date.now() / 1000) + month
 
-         const gsnProvider = await RelayProvider.newProvider( {
-          provider: window.ethereum,
-          overrideDependencies:{ asyncApprovalData, asyncPaymasterData },
-          config: {
-              //loggerConfiguration: { logLevel: 'error' },
-              paymasterAddress: paymasterArtifact.networks[networkId].address
-          }
-        }).init()
+        
+        // const contract = new Contract(
+        //   tokenPermitArtifact.networks[networkId].address, 
+        //   tokenPermitArtifact.abi, 
+        //   provider.getSigner())
 
-        provider = new ethers.providers.Web3Provider(gsnProvider)
+      let nonce = 0//(await contract.nonces(userAccount)).toNumber()
+      let permitPaymaster = await permitStructPermit(userAccount, chainId, tokenPermit, nonce, deadlineForSignature)
+
+     /* overide for useful usage  */
+    const asyncApprovalData = async function (relayRequest){
+      return Promise.resolve('0x12')
+    }
+    /* overide for useful usage  */
+    const asyncPaymasterData = async function (relayRequest) {
+      return Promise.resolve(ethers.utils.defaultAbiCoder.encode(['address'],[tokenPermitArtifact.networks[networkId].address]))
+    }
+
+    /* prepate gasless wrap for provider */
+    const gsnProvider = await RelayProvider.newProvider( {
+      provider: window.ethereum,
+      overrideDependencies:{ asyncApprovalData, asyncPaymasterData },
+      config: {
+          //loggerConfiguration: { logLevel: 'error' },
+          paymasterAddress: paymasterArtifact.networks[networkId].address
+      }
+    }).init()
+
+    provider    = new ethers.providers.Web3Provider(gsnProvider)
+    theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
+    tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address, tokenPermitArtifact.abi, provider.getSigner())
+      //theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
 
 
-    let month = 60 * 60 * 24 * 30
-    let deadlineForSignature = Math.ceil(Date.now() / 1000) + month
-      tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address, tokenPermitArtifact.abi, provider.getSigner())
-      theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
+      //const transaction  = await theContract.captureTheFlagPermit(approvalData)
+    const transaction  = await theContract.captureTheFlag()
+    const hash = transaction.hash
+    console.log(`Transaction ${hash} sent`)
+    const receipt = await provider.waitForTransaction(hash)
+    console.log(`Mined in block: ${receipt.blockNumber}`)
+    console.log(`Tx was sended from: ${receipt.from}`)
+    console.log("user balance after: ", (await tokenPermit.balanceOf(userAccount))/1e18)
 
-    let r = await window.ethereum.send('eth_requestAccounts')
-    console.log("user balance before: ", (await tokenPermit.balanceOf(r.result[0])).toString(), await tokenPermit.symbol())
 
-    let nonce = (await tokenPermit.nonces(r.result[0])).toNumber()
-    // (alpaca888Address, PORTAL_ADDRESS[chainId1], value.toString(),
-    let DOMAIN_SEPARATOR = getDomainSeparator("SEPARATOR", tokenPermit.address, provider.getSigner().chainId)
-console.log(DOMAIN_SEPARATOR)
-    // Get the EIP712 digest
-    //const digest = getPermitDigest(name, token.address, provider.getNetwork().chainId, approve, nonce, deadlineForSignature)
+}
     
 
     
@@ -134,7 +156,7 @@ console.log(DOMAIN_SEPARATOR)
     const receipt = await provider.waitForTransaction(hash)
     console.log(`Mined in block: ${receipt.blockNumber}`)
     console.log("user balance after: ", (await tokenPermit.balanceOf(r.result[0])).toString())*/
-}
+
 
 
 /********************************************************************
@@ -191,19 +213,61 @@ async function approveTk2() {
 }
 
 
-async function getDomainSeparator(name, contractAddress, chainId) { console.log(chainId)
-  return ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
-      [
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')),
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name)),
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes('1')),
-        chainId,
-        contractAddress,
-      ]
-    )
-  )
+async function permitStructPermit(r, chainId, token, nonce, deadlineForSignature) {
+
+   const EIP712Domain = [
+      { name: 'name', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'chainId', type: 'uint256' },
+      { name: 'verifyingContract', type: 'address' },
+    ]
+    const domain = {
+      name: 'SEPARATOR',
+      version: '1',
+      chainId: chainId,
+      verifyingContract: token.address,
+    }
+    const Permit = [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+      { name: 'value', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+    ]
+    //TODO: calculate value
+    const message = {
+      owner: r,
+      spender: paymasterArtifact.networks[networkId].address,
+      value: 100,
+      nonce: nonce,
+      deadline: deadlineForSignature,
+    }
+    const data = JSON.stringify({
+      types: {
+        EIP712Domain,
+        Permit,
+      },
+      domain,
+      primaryType: 'Permit',
+      message,
+    })
+
+    let y = await provider.send('eth_signTypedData_v4', [message.owner, data])
+        y = await splitSignature(y)
+
+    const approvalArgs = [
+      message.owner,
+      message.spender,
+      message.value.toString(),
+      message.deadline,
+      y.v,
+      y.r,
+      y.s
+    ]
+
+    return approvalArgs
+    //const approvalData = new ethers.utils.Interface(tokenPermitArtifact.abi).encodeFunctionData("permit", approvalArgs)
+
 }
 
 
