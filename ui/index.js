@@ -58,25 +58,11 @@ async function initContract() {
 
   provider    = new ethers.providers.Web3Provider(gsnProvider)
   tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address, tokenPermitArtifact.abi, provider.getSigner())
+  token       = new ethers.Contract(tokenArtifact.networks[networkId].address, tokenArtifact.abi, provider.getSigner())
   theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
   chainId     = (await provider.getNetwork()).chainId
   const network = await provider.getNetwork()
-  const acc = provider.getSigner() 
-  return {acc, network}
-}
-
-async function userbalance() {
-    return await token.balanceOf(provider.getSigner())
-}
-async function contractCall() {
-  let r = await window.ethereum.send('eth_requestAccounts')
-  console.log("user balance before: ", (await token.balanceOf(r.result[0])).toString())
-  const transaction = await theContract.captureTheFlag()
-  const hash = transaction.hash
-  console.log(`Transaction ${hash} sent`)
-  const receipt = await provider.waitForTransaction(hash)
-  console.log(`Mined in block: ${receipt.blockNumber}`)
-  console.log("user balance after: ", (await token.balanceOf(r.result[0])).toString())
+  return {account: userAccount.result[0], network, name:'', am:0, alwc:0}
 }
 
 let logview
@@ -97,25 +83,44 @@ async function listenToEvents() {
   })
 }
 
+
+/********************************************************************
+*
+*  Excute captureTheFlag() through gasless provider + permit under hood
+*
+***********************************************************************/
+
 async function contractCallTk1() {
 
       let month = 60 * 60 * 24 * 30
-      let deadlineForSignature = Math.ceil(Date.now() / 1000) + month
+      let deadline = Math.ceil(Date.now() / 1000) + month
+      let bal_before = (await tokenPermit.balanceOf(userAccount.result[0]))/1e18
 
-        
-        // const contract = new Contract(
-        //   tokenPermitArtifact.networks[networkId].address, 
-        //   tokenPermitArtifact.abi, 
-        //   provider.getSigner())
 
-      let nonce = 0//(await contract.nonces(userAccount)).toNumber()
-      let permitPaymaster = await permitStructPermit(userAccount, chainId, tokenPermit, nonce, deadlineForSignature)
-
+      let nonce           = (await tokenPermit.nonces(userAccount.result[0])).toNumber()
+      console.log(`ALLOWANCE IS: ${(await tokenPermit.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18} ${await tokenPermit.name()}`)
+      let permitPaymaster = await permitStructPermit(userAccount.result[0], chainId, tokenPermit, nonce, deadline)
+      
      /* overide for useful usage  */
+     /* passed struct by eip712 (permit) for transaction pay through token which have user */
     const asyncApprovalData = async function (relayRequest){
-      return Promise.resolve('0x12')
+
+      const permitArgs = [
+        permitPaymaster.owner,
+        permitPaymaster.value,
+        permitPaymaster.deadline,
+        permitPaymaster.v,
+        permitPaymaster.r,
+        permitPaymaster.s
+      ]
+      console.log('permitArgs==', permitArgs)
+      const permitData = ethers.utils.defaultAbiCoder.encode(["address", "uint256", "uint256", "uint8", "bytes32", "bytes32"], permitArgs)
+
+
+      return Promise.resolve(permitData)
     }
     /* overide for useful usage  */
+    /* passed actual address token */
     const asyncPaymasterData = async function (relayRequest) {
       return Promise.resolve(ethers.utils.defaultAbiCoder.encode(['address'],[tokenPermitArtifact.networks[networkId].address]))
     }
@@ -133,38 +138,34 @@ async function contractCallTk1() {
     provider    = new ethers.providers.Web3Provider(gsnProvider)
     theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
     tokenPermit = new ethers.Contract(tokenPermitArtifact.networks[networkId].address, tokenPermitArtifact.abi, provider.getSigner())
-      //theContract = new ethers.Contract(contractArtifact.networks[networkId].address, contractAbi, provider.getSigner())
 
-
-      //const transaction  = await theContract.captureTheFlagPermit(approvalData)
+    //const transaction  = await theContract.captureTheFlagPermit(approvalData)
     const transaction  = await theContract.captureTheFlag()
     const hash = transaction.hash
     console.log(`Transaction ${hash} sent`)
     const receipt = await provider.waitForTransaction(hash)
     console.log(`Mined in block: ${receipt.blockNumber}`)
     console.log(`Tx was sended from: ${receipt.from}`)
-    console.log("user balance after: ", (await tokenPermit.balanceOf(userAccount))/1e18)
+    console.log("user balance after: ", (await tokenPermit.balanceOf(userAccount.result[0]))/1e18)
+    console.log(`ALLOWANCE IS: ${(await tokenPermit.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18} ${await tokenPermit.name()}`)
+    let bal_after = (await tokenPermit.balanceOf(userAccount.result[0]))/1e18
+    document.getElementById('spended').innerHTML = `Spended: ${bal_before - bal_after} ${await tokenPermit.name()} tokens`
+    document.getElementById('allowance').innerHTML = `Paymaster has allowence: ${(await tokenPermit.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18} ${await tokenPermit.name()} tokens`
 
 
 }
-    
-
-    
-    /*const transaction = await theContract.captureTheFlag()
-    const hash = transaction.hash
-    console.log(`Transaction ${hash} sent`)
-    const receipt = await provider.waitForTransaction(hash)
-    console.log(`Mined in block: ${receipt.blockNumber}`)
-    console.log("user balance after: ", (await tokenPermit.balanceOf(r.result[0])).toString())*/
-
 
 
 /********************************************************************
 *
-*  Excute captureTheFlag() through gasless provider. Before was executed 'approve'.
+*  Excute captureTheFlag() through gasless provider. Before was executed 'approve' manually.
 *
 ***********************************************************************/
 async function contractCallTk2() {
+
+    let bal_before = (await token.balanceOf(userAccount.result[0]))/1e18
+    let check_allowance = (await token.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18
+    if(check_allowance === 0) { alert(`Does\'t enough allowance ${check_allowance}`); return;}
 
     /* overide for useful usage  */
     const asyncApprovalData = async function (relayRequest){
@@ -199,6 +200,9 @@ async function contractCallTk2() {
     console.log(`Mined in block: ${receipt.blockNumber}`)
     console.log(`Tx was sended from: ${receipt.from}`)
     console.log("user balance after: ", (await token.balanceOf(userAccount.result[0])).toString())
+    let bal_after = (await token.balanceOf(userAccount.result[0]))/1e18
+    document.getElementById('spended').innerHTML = `Spended: ${bal_before - bal_after} ${await token.name()} tokens`
+    document.getElementById('allowance').innerHTML = `Paymaster has allowence: ${(await token.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18} ${await token.name()} tokens`
 }
 
 /********************************************************************
@@ -209,7 +213,9 @@ async function contractCallTk2() {
 async function approveTk2() {
     provider = new ethers.providers.Web3Provider(window.ethereum)
     token    = new ethers.Contract(tokenArtifact.networks[networkId].address,tokenArtifact.abi, provider.getSigner())
-    await token.functions.approve(paymasterArtifact.networks[networkId].address, ethers.utils.parseEther('10000'))
+    let tx   = await token.functions.approve(paymasterArtifact.networks[networkId].address, ethers.utils.parseEther('10000'))
+    const receipt = await provider.waitForTransaction(tx.hash)
+    document.getElementById('allowance').innerHTML = `Paymaster has allowence: ${(await token.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18} ${await token.name()} tokens`
 }
 
 
@@ -238,7 +244,7 @@ async function permitStructPermit(r, chainId, token, nonce, deadlineForSignature
     const message = {
       owner: r,
       spender: paymasterArtifact.networks[networkId].address,
-      value: 100,
+      value: 1e18.toString(),
       nonce: nonce,
       deadline: deadlineForSignature,
     }
@@ -255,26 +261,23 @@ async function permitStructPermit(r, chainId, token, nonce, deadlineForSignature
     let y = await provider.send('eth_signTypedData_v4', [message.owner, data])
         y = await splitSignature(y)
 
-    const approvalArgs = [
-      message.owner,
-      message.spender,
-      message.value.toString(),
-      message.deadline,
-      y.v,
-      y.r,
-      y.s
-    ]
+    const approvalArgs = {
+      owner: message.owner,
+      spender: message.spender,
+      value: message.value.toString(),
+      deadline: message.deadline,
+      v: y.v,
+      r: y.r,
+      s: y.s
+    }
 
     return approvalArgs
     //const approvalData = new ethers.utils.Interface(tokenPermitArtifact.abi).encodeFunctionData("permit", approvalArgs)
 
 }
 
-
-
 window.app = {
   initContract,
-  contractCall,
   contractCallTk1,
   contractCallTk2,
   approveTk2,

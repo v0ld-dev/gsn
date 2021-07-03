@@ -7,23 +7,27 @@
     </script>
 
 </head>
-<body>
+<body id="bo" style="filter: blur(8px);">
     <h2>GSNv2 Test App</h2>
 
     <script>
-      /*window.app.userbalance().then(function (balance) {
-        console.log( 'userbalance: ', balance)
-        document.getElementById('balance').innerHTML = balance
-      })*/
-      window.app.initContract().then(function ({account, network}) {
-        console.log('User account:', account)
+        window.app.initContract().then(function ({account, network, am, name, alwc}) {
         console.log(`Identified network: ${JSON.stringify(network)}`)
         document.getElementById('through_tk1').disabled = false
         document.getElementById('through_tk2').disabled = false
         document.getElementById('approve_tk2').disabled = false
+        document.getElementById('acc').innerHTML = `<h3>User account: ${account}</h3>`
+        document.getElementById('spended').innerHTML   = `Spended: ${am} ${name} tokens`
+        document.getElementById('allowance').innerHTML = `Paymaster has allowance: ${alwc} ${name} tokens`
+        document.getElementById('bo').style.filter = 'blur(0px)'
         
       })
     </script>
+    <p>
+        <div id="acc"></div>
+        <div id="spended"></div>
+        <div id="allowance"></div>
+    </p>
     <p><button id="through_tk1" disabled onClick="(async()=>{await window.app.contractCallTk1();})();">
         pay for TX through erc20permit token
     </button></p>
@@ -33,9 +37,6 @@
     <button id="approve_tk2" disabled onClick="(async()=>{await window.app.approveTk2();})();">
         approve for tx erc20 from user to payment sm
     </button></p>
-<!--     <p><button id="capture_button" disabled onClick="window.app.contractCall()">
-        Capture the flag
-    </button></p> -->
 
 <hr>
 <div id="logview"> </div>
