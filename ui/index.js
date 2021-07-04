@@ -150,7 +150,23 @@ async function contractCallTk1() {
     console.log(`ALLOWANCE IS: ${(await tokenPermit.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18} ${await tokenPermit.name()}`)
     let bal_after = (await tokenPermit.balanceOf(userAccount.result[0]))/1e18
     document.getElementById('spended').innerHTML = `Spended: ${bal_before - bal_after} ${await tokenPermit.name()} tokens`
-    document.getElementById('allowance').innerHTML = `Paymaster has allowence: ${(await tokenPermit.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18} ${await tokenPermit.name()} tokens`
+    document.getElementById('allowance').innerHTML = `Paymaster has allowence: ${(await tokenPermit.allowance(userAccount.result[0], paymasterArtifact.networks[networkId].address))/1e18} ${await tokenPermit.name()} tokens <div>Gas used: ${receipt.gasUsed}</div>`
+
+    let iface = new ethers.utils.Interface(paymasterArtifact.abi);
+    let parsedEvents = receipt.logs.map(log => {
+      try{
+        let parsed = iface.parseLog(log);
+        if(parsed.name === 'TokensCharged'){
+          console.log('&&&&&&&&', parsed.name);
+          let m = parsed.args.map(el => {
+              return el._hex;
+          });
+          console.log('&&&&&&&&', m);
+          return m;
+        }
+      }catch(e){ console.log('$$$$$$$$ ',e);}
+    });
+    console.log(parsedEvents);
 
 
 }
